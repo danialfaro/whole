@@ -10,7 +10,7 @@ import { $, show, ov } from "./ui/dom.js";
 import { colorOf, pathOf, shapeSVG } from "./ui/shapes.js";
 import { bindBoard, layout } from "./ui/board.js";
 import { initSettings, toggleHaptics, toggleSound, toggleTheme } from "./ui/settings.js";
-import { clearSelection, hint, openLevels, startLevel, tap, undo } from "./modes/play.js";
+import { clearSelection, hint, openLevels, restartLevel, startLevel, tap, undo } from "./modes/play.js";
 import { bestLabel, startEndless } from "./modes/endless.js";
 
 selfTest();
@@ -45,12 +45,7 @@ $("play").onclick = () => {
 $("endless").onclick = () => {
   Snd.init();
   Snd.select();
-  startEndless(false);
-};
-$("stream").onclick = () => {
-  Snd.init();
-  Snd.select();
-  startEndless(true);
+  startEndless();
 };
 $("how").onclick = () => {
   Snd.init();
@@ -73,6 +68,12 @@ $("prev").addEventListener("pointerdown", (e) => {
 });
 $("undo").onclick = undo;
 $("hint").onclick = hint;
+// dead-end panel
+$("deadUndo").onclick = undo;
+$("deadRestart").onclick = () => {
+  Snd.select();
+  restartLevel();
+};
 $("clear").onclick = clearSelection;
 $("sndBtn").onclick = toggleSound;
 
@@ -88,12 +89,8 @@ $("tgHap").onclick = toggleHaptics;
 $("tgTheme").onclick = toggleTheme;
 $("restart").onclick = () => {
   ov("ovPause", false);
-  if (isEndless()) {
-    startEndless();
-    return;
-  }
-  S.score = S.levelStart || 0;
-  startLevel(S.level);
+  if (isEndless()) startEndless();
+  else restartLevel();
 };
 $("pLvls").onclick = openLevels;
 $("toMenu").onclick = () => {

@@ -1,4 +1,4 @@
-/* Game screen: top bar, board, pieces, preview, EXTRA HUD, stream queue, tools */
+/* Game screen: top bar, board, pieces, preview, EXTRA HUD, tools */
 
 /* ---------- top bar ---------- */
 
@@ -64,6 +64,23 @@
   font-size: 15px;
   line-height: 19px;
   letter-spacing: 0.02em;
+}
+
+/* stars the current classic level is still worth */
+#game.endless #starBox {
+  display: none;
+}
+
+#stars {
+  display: inline-flex;
+  gap: 1px;
+  height: 19px;
+  align-items: center;
+}
+
+#stars .star {
+  width: 18px;
+  height: 18px;
 }
 
 /* ---------- board ---------- */
@@ -196,6 +213,51 @@
 
 .cell.in {
   animation: fin 0.35s both;
+}
+
+/* ---------- dead end: board greyed out, only Undo / Restart ---------- */
+
+#board,
+#prev {
+  transition:
+    opacity 0.35s,
+    filter 0.35s;
+}
+
+#game.deadend #board,
+#game.deadend #prev {
+  opacity: 0.28;
+  filter: grayscale(0.8);
+  pointer-events: none;
+}
+
+#game.deadend #board {
+  animation: shake 0.4s;
+}
+
+#deadEnd {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: min(320px, calc(100% - 24px));
+  z-index: 7;
+  padding: 24px;
+  gap: 10px;
+  border-color: #d23b2a;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, #d23b2a 18%, transparent),
+    0 20px 50px var(--shadow);
+}
+
+#game.deadend #deadEnd {
+  display: flex;
+}
+
+#deadEnd h2 {
+  font-size: 32px;
+  color: #d23b2a;
 }
 
 /* ---------- completed circle (created by fx.js) + particles ---------- */
@@ -410,43 +472,6 @@
     opacity: 0;
     transform: scale(0.9);
   }
-}
-
-/* ---------- stream queue ---------- */
-
-#qbar {
-  display: none;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  height: 54px;
-  color: var(--mute);
-}
-
-#qbar small {
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  min-width: 34px;
-  text-align: center;
-}
-
-#qbar div {
-  display: flex;
-  gap: 10px;
-}
-
-#qbar span {
-  display: block;
-  width: 36px;
-  transition: opacity 0.2s;
-}
-
-#qbar svg {
-  width: 100%;
-  display: block;
-  overflow: visible;
 }
 
 /* ---------- bottom: status + tools ---------- */

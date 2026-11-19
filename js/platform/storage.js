@@ -1,6 +1,7 @@
 /*
  * localStorage wrapper. Every key is prefixed "whole:" and never throws.
- * Keys in use: level, max, snd, hap, theme, best (Endless), bestS (Stream).
+ * Keys in use: level, max, stars, hints (Classic), best (Endless), snd, hap, theme.
+ * (bestS belonged to the removed Stream mode and is no longer read.)
  * Renaming a key loses players' saved progress.
  */
 export const store = {

@@ -82,19 +82,6 @@ export function solveAll(list) {
   return null;
 }
 
-/** Any single circle that can be made from the pieces, or null (Stream mode). */
-export function anyCircle(ps) {
-  for (const p of ps) {
-    for (const ch of circles(
-      ps.filter((x) => x !== p),
-      p.mask,
-      [p],
-    ))
-      return ch;
-  }
-  return null;
-}
-
 export function selfTest() {
   const T = arcMask(0, 4),
     B = arcMask(4, 4),

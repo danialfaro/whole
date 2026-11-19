@@ -1,10 +1,11 @@
-/* The game screen: board grid, piece cells, status line, tool buttons, stream queue. */
-import { S, isEndless, isStream } from "../state.js";
-import { anyCircle, solveAll } from "../core/geometry.js";
+/* The game screen: board grid, piece cells, status line, tool buttons. */
+import { S, prog, isEndless } from "../state.js";
+import { solveAll } from "../core/geometry.js";
 import { $ } from "./dom.js";
 import { shapeSVG } from "./shapes.js";
 import { showScore } from "./score.js";
 import { renderPreview } from "./preview.js";
+import { renderStarBox } from "./stars.js";
 
 const GAP = 8,
   PAD = 12,
@@ -42,7 +43,7 @@ export function bindBoard(onTap) {
 
 /** Size the grid to fit the space left in #boardwrap (more columns in landscape). */
 export function layout() {
-  const n = isStream() ? S.cap : S.pieces.length || 1,
+  const n = S.pieces.length || 1,
     land = innerWidth > innerHeight * 1.15;
   let cols = n <= 4 ? 2 : n <= 9 ? 3 : n <= 16 ? 4 : 5;
   if (land) cols = Math.min(cols + 2, n <= 4 ? 4 : 7);
@@ -68,11 +69,12 @@ export function layout() {
 export function render(animIn) {
   const en = isEndless();
   $("lv").textContent = en ? S.round : S.level;
-  $("lvl").textContent = en ? (S.stream ? "Stage" : "Round") : "Level";
-  $("modeBox").querySelector("b").textContent = S.stream ? "≋ Stream" : "∞ Endless";
+  $("lvl").textContent = en ? "Round" : "Level";
   showScore();
+  renderStarBox();
   $("game").classList.toggle("bonus", !!S.bonus);
   $("game").classList.toggle("endless", en);
+  if (!S.dead) $("game").classList.remove("deadend"); // shown by checkDeadEnd() in play.js
 
   const b = $("board");
   b.innerHTML = "";
@@ -83,7 +85,6 @@ export function render(animIn) {
   $("undo").disabled = !S.hist.length || (en && S.undos <= 0);
   $("clear").disabled = !S.sel.length;
   renderPreview();
-  renderQueue();
 }
 
 /**
@@ -143,19 +144,18 @@ export function status(msg) {
   const el = $("status"),
     en = isEndless();
   $("undo").textContent = en ? "Undo · " + S.undos : "Undo";
-  $("hint").textContent = en ? "Hint −100" : "Hint";
+  $("hint").textContent = en ? "Hint −100" : "Hint · " + prog.hints;
   if (en) $("undo").disabled = !S.hist.length || S.undos <= 0;
   if (msg) {
     el.textContent = msg;
     return;
   }
-  const stuck = S.pieces.length && (isStream() ? !anyCircle(S.pieces) : !solveAll(S.pieces));
-  $("hint").disabled = !!stuck;
+  const stuck = S.pieces.length && !solveAll(S.pieces);
+  $("hint").disabled = !!stuck || (!en && prog.hints <= 0);
   const combo = S.combo > 1 ? `<span id="combo">Combo ×${S.combo}</span> · ` : "";
   let text;
-  if (stuck) text = "No full solution remains — try Undo";
+  if (stuck) text = "Dead end: the rest can't all fit — Undo";
   else if (!S.pieces.length) text = "Level complete";
-  else if (isStream()) text = `${S.done}/${S.target} circles`;
   else text = `${S.pieces.length} pieces left`;
   el.innerHTML = combo + text;
 }
@@ -163,20 +163,4 @@ export function status(msg) {
 export function refreshTools() {
   $("clear").disabled = !S.sel.length;
   renderPreview();
-}
-
-/** Stream mode: the next pieces waiting to enter the board. */
-export function renderQueue() {
-  const q = $("qbar");
-  if (!isStream()) {
-    q.style.display = "none";
-    return;
-  }
-  q.style.display = "flex";
-  const next = S.queue.slice(0, 4);
-  q.innerHTML = next.length
-    ? `<small>Next</small><div>` +
-      next.map((p, i) => `<span style="opacity:${1 - i * 0.2}">${shapeSVG(p.mask, { ghost: false })}</span>`).join("") +
-      `</div><small>${S.queue.length > 4 ? "+" + (S.queue.length - 4) : ""}</small>`
-    : `<small>Last pieces</small>`;
 }

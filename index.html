@@ -16,6 +16,31 @@
   </head>
 
   <body>
+    <!-- shared SVG filter: makes a star slot look pressed into the surface (used by ui/stars.js) -->
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <filter id="starInset" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+        <!-- the slot fill is mostly transparent: use its shape as a solid mask -->
+        <feComponentTransfer in="SourceAlpha" result="mask">
+          <feFuncA type="linear" slope="50" />
+        </feComponentTransfer>
+        <!-- shadow inside the top edge -->
+        <feOffset in="mask" dy="1.6" result="off" />
+        <feGaussianBlur in="off" stdDeviation="1" result="blur" />
+        <feComposite in="mask" in2="blur" operator="out" result="inner" />
+        <feFlood flood-color="#000" flood-opacity="0.38" />
+        <feComposite in2="inner" operator="in" result="shadow" />
+        <!-- light lip just under the bottom edge -->
+        <feOffset in="mask" dy="1" result="lipOff" />
+        <feComposite in="lipOff" in2="mask" operator="out" result="lipShape" />
+        <feFlood class="lip" flood-color="#fff" />
+        <feComposite in2="lipShape" operator="in" result="lip" />
+        <feMerge>
+          <feMergeNode in="lip" />
+          <feMergeNode in="SourceGraphic" />
+          <feMergeNode in="shadow" />
+        </feMerge>
+      </filter>
+    </svg>
     <div id="app">
       <section class="screen on" id="menu">
         <div id="hero"></div>
@@ -23,8 +48,7 @@
         <p>Find the pieces that complete a circle.</p>
         <div class="row">
           <button class="btn pri" id="play">Play</button><button class="btn" id="endless">Endless</button
-          ><button class="btn" id="stream">Stream</button><button class="btn" id="how">How it works</button
-          ><button class="btn" id="lvls">Levels</button>
+          ><button class="btn" id="how">How it works</button><button class="btn" id="lvls">Levels</button>
         </div>
       </section>
       <section class="screen" id="game">
@@ -38,6 +62,7 @@
             <div><small id="lvl">Level</small><b id="lv">1</b></div>
             <div><small>Score</small><b id="sc">0</b></div>
             <div id="modeBox"><small>Mode</small><b>∞ Endless</b></div>
+            <div id="starBox"><small>Stars</small><b id="stars"></b></div>
           </div>
           <button class="ib" id="sndBtn" aria-label="Sound">
             <svg viewBox="0 0 24 24">
@@ -52,7 +77,12 @@
           </div>
           <div id="prev"></div>
           <div id="board"></div>
-          <div id="qbar"></div>
+          <div class="card" id="deadEnd" role="alertdialog" aria-labelledby="deadTitle">
+            <h2 id="deadTitle">Dead end</h2>
+            <p>The pieces left can't all fit together any more.</p>
+            <button class="btn pri" id="deadUndo">Undo last circle</button
+            ><button class="btn" id="deadRestart">Restart level</button>
+          </div>
         </div>
 
         <div class="bot">
@@ -67,9 +97,10 @@
     <div class="ov" id="ovWin">
       <div class="card">
         <h2 id="wt">Level cleared</h2>
-        <p>Every piece found its place.</p>
+        <div class="wstars" id="wstars"></div>
+        <p id="wmsg">Every piece found its place.</p>
         <div class="big" id="ws">0</div>
-        <button class="btn pri" id="next">Next level</button>
+        <button class="btn pri wait" id="next">Next level</button>
       </div>
     </div>
     <div class="ov" id="ovOver">
@@ -93,7 +124,7 @@
     </div>
     <div class="ov" id="ovLvls">
       <div class="card">
-        <h2>Levels</h2>
+        <h2>Levels <span class="lvtotal" id="lvTotal"></span></h2>
         <div class="lgrid" id="lgrid"></div>
         <button class="btn" id="lvOk">Close</button>
       </div>

@@ -123,8 +123,12 @@
   border: 1.5px solid var(--line);
   font-family: var(--serif);
   font-size: 24px;
-  display: grid;
-  place-items: center;
+  line-height: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
   transition:
     transform 0.08s,
     background 0.15s;
@@ -145,4 +149,55 @@
 .lv:disabled {
   opacity: 0.3;
   cursor: default;
+}
+
+.lvstars {
+  display: flex;
+}
+
+.lvstars .star {
+  width: 11px;
+  height: 11px;
+}
+
+.lvtotal {
+  font-size: 0.6em;
+  color: var(--gold);
+  vertical-align: middle;
+}
+
+/* ---------- win card stars ---------- */
+
+.wstars {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin: 2px 0 -2px;
+}
+
+.wstars .star {
+  width: 46px;
+  height: 46px;
+}
+
+/* the gold star drops into its slot and settles */
+.wstars .star.on .fill {
+  animation: sland 0.45s cubic-bezier(0.3, 0, 0.5, 1) both;
+}
+
+@keyframes sland {
+  0% {
+    opacity: 0;
+    transform: translateY(-55%) scale(1.6) rotate(-25deg);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0) scale(0.8) rotate(0);
+  }
+  75% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(0.86);
+  }
 }

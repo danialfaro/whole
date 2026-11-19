@@ -1,0 +1,210 @@
+/* Design tokens, theme, reset, shared controls, menu screen */
+
+:root {
+  --bg: #f1ede6;
+  --board: #e9e4db;
+  --ink: #1d1c1a;
+  --mute: #8a847a;
+  --line: #cfc8bb;
+  --card: #f8f5f0;
+  --shadow: rgba(40, 30, 10, 0.22);
+  --serif: "Instrument Serif", Georgia, serif;
+  --sans: "Inter Tight", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --rainbow: linear-gradient(90deg, #ff4d6d, #ffa94d, #ffe066, #69db7c, #4dabf7, #9775fa, #ff4d6d);
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+
+/* Dark values live in two blocks (system preference + explicit toggle): keep them in sync */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #16161a;
+    --board: #1e1e23;
+    --ink: #ece8df;
+    --mute: #7d7a74;
+    --line: #34343b;
+    --card: #202026;
+    --shadow: rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #16161a;
+  --board: #1e1e23;
+  --ink: #ece8df;
+  --mute: #7d7a74;
+  --line: #34343b;
+  --card: #202026;
+  --shadow: rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html {
+  height: 100%;
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+}
+
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  overflow: hidden;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--bg);
+  z-index: 10;
+}
+
+#app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 12px;
+}
+
+.screen {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.screen.on {
+  display: flex;
+}
+
+/* ---------- buttons ---------- */
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
+.btn {
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 24px;
+  border: 1.5px solid var(--ink);
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+  transition:
+    transform 0.08s,
+    background 0.15s,
+    color 0.15s;
+}
+
+.btn:active {
+  transform: scale(0.96);
+}
+
+.btn.pri {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.btn:disabled {
+  opacity: 0.35;
+}
+
+.ib {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  transition:
+    background 0.15s,
+    transform 0.08s;
+}
+
+.ib:active {
+  transform: scale(0.92);
+  background: var(--line);
+}
+
+.ib svg {
+  width: 20px;
+  height: 20px;
+  stroke: var(--ink);
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---------- menu ---------- */
+
+#menu {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+}
+
+#menu h1 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(64px, 16vw, 112px);
+  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+#menu p {
+  margin: 0 0 18px;
+  color: var(--mute);
+  font-size: 16px;
+}
+
+#hero {
+  width: min(54vw, 230px);
+  margin-bottom: 12px;
+}
+
+#menu .row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(280px, 80vw);
+}
+
+/* ---------- shared keyframes ---------- */
+
+@keyframes fin {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+@media (min-width: 700px) {
+  #app {
+    padding: 0 24px;
+  }
+}

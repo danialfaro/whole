@@ -4,48 +4,75 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-"Whole" is a mobile-first browser puzzle game: tap pieces (circle sectors) that together tile exactly one full circle. The entire game is in a single file, [index.html](index.html): CSS in `<style>`, markup, and one `<script>` with no dependencies apart from Google Fonts.
+"Whole" is a mobile-first browser puzzle game: tap pieces (circle sectors) that together tile exactly one full circle. The code is plain HTML, CSS and native ES modules. There is no build step, framework or dependency apart from Google Fonts.
 
 ## Running
 
-There is no build step, package manager, linter or test runner. Open `index.html` directly in a browser, or serve the folder statically (for example `python -m http.server`) to test on a phone over the LAN.
+The game uses ES modules, so it **must be served over HTTP**. Opening `index.html` with `file://` fails. Serve the folder with any static server, for example `npx serve .` or `python -m http.server`, then open it in a browser. To test on a phone, open the same server from the phone over the LAN.
 
-The only automated check is `selfTest()`, which runs on load and calls `console.assert` on the geometry functions. After changing geometry or solver code, check the browser console for `geometry self-test failed`.
+There is no test runner. `selfTest()` in [js/core/geometry.js](js/core/geometry.js) runs on load and calls `console.assert`, so check the browser console for `geometry self-test failed`.
 
-## Architecture (inside the `<script>`, in this order)
+To check modules from the browser console, import them by URL: `const { S } = await import("/js/state.js")`. This returns the same module instance the game uses.
 
-**Geometry model.** A circle is split into `N = 8` sectors of 45°, and a piece is an 8-bit mask (`FULL = 255`). Sector 0 starts at 12 o'clock and the sectors go clockwise (see `pathOf`). Pieces are contiguous arcs made with `arcMask(start, len)`, and they never rotate. A piece's colour comes from a hash of its mask (`colorOf`) and has no gameplay meaning.
-- `formsCircle` / `overlaps`: check a selection.
-- `circles()`: a generator that lists every way to complete a circle. It always extends from the lowest uncovered sector, so each set of pieces is produced once.
-- `solveAll()`: backtracking that splits the whole board into circles exactly. It is used to detect a stuck board (classic and endless) and to give hints.
-- `anyCircle()`: Stream mode only needs *one* circle to be possible, so it uses this instead of `solveAll`.
+Formatting: `npx prettier --write css js index.html`. The width setting is in [.prettierrc.json](.prettierrc.json).
 
-**Generation.** `genLevel(n, salt, base)` is deterministic per level through the seeded `rng` (mulberry32). It builds a board by cutting whole circles into the partitions listed in `TIERS[tier]` (`tier = floor((n-1)/2)`), shuffles the pieces, and checks with `solveAll`, retrying with a new `salt` if needed. Classic levels are reproducible from `n` alone. Endless mode passes a random `base`. `setupStream()` builds an ordered piece sequence and splits it into board (`S.cap`) and `S.queue`.
+## Layout
 
-**State.** Everything lives in one mutable global object `S`:
-- `S.mode` is `"classic"` or `"endless"`. Stream is `S.mode === "endless" && S.stream`, so check both flags.
-- `S.bonus` / `S.xOn` drive the timed "EXTRA" bonus rounds (endless only, never in stream). The countdown is the rainbow ring drawn around the `#prev` preview (`ringHTML`, `xTick`). `#xbar` is hidden.
-- `S.hist` holds snapshots for undo: pieces, score, combo, queue, done. Endless mode limits undos to `S.undos`.
-- `S.busy` blocks input during intros and transitions.
+- [index.html](index.html): markup only. It links the CSS files and loads `js/main.js` as a module.
+- `css/`
+  - `base.css`: design tokens, theme, reset, buttons, menu.
+  - `game.css`: board, pieces, preview, EXTRA HUD, stream queue.
+  - `overlays.css`: the cards shown over the game.
+- `js/core/`: pure logic, with no DOM and no game state.
+  - `geometry.js`: masks and solvers.
+  - `generate.js`: board generation.
+- `js/platform/`: browser services.
+  - `storage.js`: the `store` wrapper over localStorage.
+  - `audio.js`: `Snd`, sounds synthesised with WebAudio.
+  - `haptics.js`: `Hap`, vibration.
+- [js/state.js](js/state.js): the single mutable state object `S`, plus `prog` and the `isEndless()` / `isStream()` helpers.
+- `js/ui/`: rendering.
+  - `board.js`: grid, cells, status line, queue.
+  - `preview.js`: the circle above the board and the EXTRA countdown ring.
+  - `score.js`: the animated score counter.
+  - `fx.js`: particles and the completed circle flying to the score.
+  - `shapes.js`: SVG for pieces.
+  - `settings.js`: sound, vibration and theme toggles.
+  - `dom.js`: `$`, `show`, `ov`.
+- `js/modes/`
+  - `play.js`: tap / complete / undo / hint, shared by all modes, plus Classic levels.
+  - `endless.js`: Endless and Stream runs.
+  - `extra.js`: timed EXTRA bonus rounds.
+- [js/main.js](js/main.js): the entry point. It wires every button, key and listener.
+
+## Architecture
+
+**Geometry model.** A circle is split into `N = 8` sectors of 45°, and a piece is an 8-bit mask (`FULL = 255`). Sector 0 starts at 12 o'clock and the sectors go clockwise (see `pathOf` in `ui/shapes.js`). Pieces never rotate. A piece's colour is a hash of its mask and has no gameplay meaning.
+- `circles()` lists every way to complete a circle. It always extends from the lowest uncovered sector, so each set is produced once.
+- `solveAll()` splits the whole board into circles exactly. It is used to detect a stuck board in Classic and Endless.
+- Stream only needs *one* possible circle, so it uses `anyCircle()` instead.
+
+**Generation is deterministic.** `genLevel(n)` is seeded through `rng` (mulberry32). It cuts whole circles into the partitions listed in `TIERS`, so every board is solvable. Each classic level number always gives the same board. Changing the order or number of `rng()` calls in `generate.js` changes every classic level. If you touch that code, compare the output of `genLevel(1..30)` before and after.
+
+**Modes.**
+- `S.mode` is `"classic"` or `"endless"`. Stream is Endless with `S.stream` set, so use `isStream()` rather than checking one flag.
+- EXTRA rounds (`S.bonus`, `S.xOn`) only happen in Endless, never in Stream. Their countdown is `#xring`, a ring drawn inside the `#prev` preview, and it pauses while any overlay is open.
 
 **Render flow.**
-- `render(animIn)` rebuilds the whole board.
-- `complete()` (when a circle is formed) does *not* call `render`. Instead it removes the used cells, re-lays out the board and animates the remaining cells into place (FLIP). It also flies an assembled circle to the score, then calls `hud()` for a partial UI update or `win()`.
-- `layout()` sizes the grid from the space available in `#boardwrap`.
-- The score counter (`showScore`) waits until `scHold` before counting up, so the number changes when the flying circle arrives.
+- `render(animIn)` in `ui/board.js` rebuilds the whole screen from `S`.
+- Completing a circle (`complete()` in `modes/play.js`) does *not* call `render`. Instead `removeCellsAnimated()` fades out the used cells, mutates `S`, and glides the remaining cells into place (FLIP). After that, `hud()` refreshes only the status, tools and preview.
+- The score counter waits for the flying circle to land before counting up: `holdScore()` / `scoreHoldLeft()` in `ui/score.js`.
+- Cell taps and the end of one-shot animations are handled by listeners on `#board` itself (`bindBoard`), so newly added cells need no wiring.
 
-**Async guards.** Many `setTimeout`/rAF callbacks check that the run is still the same one before acting, for example `S.mode === "endless"`, `!S.over`, `S.round === round` (see `alive()` in `extraIntro`). The player can quit or restart in the middle of an animation, so keep this pattern for any new delayed callback.
+**Module rules.**
+- `core/` and `platform/` never import from `ui/` or `modes/`.
+- Some modules import each other in cycles: `play ↔ endless ↔ extra`. This is safe only because those modules just declare functions. **Only `main.js` runs top-level code that calls into other modules.** Keep it that way.
+- An imported `let` binding cannot be reassigned from another module. Shared mutable values therefore live in `S`, or behind a setter such as `holdScore()`.
 
-**Audio and haptics.** All sounds are synthesised with WebAudio in `Snd`; there are no asset files. The context is created lazily on the first user gesture (`Snd.init()`). `levelOld` and `levelOld2` are unused alternate sounds. `Hap` wraps `navigator.vibrate`, and its toggle is hidden where the API is missing (iOS).
+**Async guards.** Many `setTimeout`/rAF callbacks first check that the same run is still going, using `isEndless()`, `!S.over`, `S.round === round` (see `alive()` in `extraIntro`). The player can quit or restart mid-animation, so keep this pattern for any new delayed callback.
 
-**Persistence.** `store` wraps `localStorage`, with every key prefixed `whole:`. Keys: `level`, `max` (highest unlocked level), `snd`, `hap`, `theme`, `best` (endless), `bestS` (stream).
+**Persistence.** `store` prefixes every localStorage key with `whole:`. The keys are `level`, `max`, `snd`, `hap`, `theme`, `best` and `bestS`. Renaming any of them loses players' saved progress.
 
-**UI plumbing.**
-- Screens (`.screen`) are switched with `show(id)`; overlays (`.ov`) with `ov(id, on)`.
-- The EXTRA timer pauses while any overlay is open.
-- Theme: colours are CSS variables on `:root`. Dark values are defined twice: under `prefers-color-scheme: dark` (guarded by `:not([data-theme="light"])`) and under `[data-theme="dark"]`. Change both blocks together.
+**Theme.** Colours are CSS variables on `:root` in `base.css`. The dark values are defined twice: once for the system preference (`prefers-color-scheme`) and once for the explicit toggle (`[data-theme="dark"]`). Change both blocks together.
 
-## Conventions
-
-- The JS is written as dense one-liners with short names (`S`, `$`, `ov`, `p`, `k`). Match that style when editing nearby code rather than reformatting large regions.
-- Everything stays in `index.html`; do not add files, frameworks or a build step unless asked.
+**Audio.** `Snd.init()` / `Snd.wake()` must run inside a user gesture before any sound plays.

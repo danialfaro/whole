@@ -8,21 +8,26 @@ import { Snd } from "../platform/audio.js";
 import { Hap } from "../platform/haptics.js";
 import { formsCircle, overlaps, solveAll } from "../core/geometry.js";
 import { genLevel } from "../core/generate.js";
-import { $, show, ov, replay, centerOf } from "../ui/dom.js";
-import { PAL, colorOf } from "../ui/shapes.js";
+import { $, show, ov, replay } from "../ui/dom.js";
+import { PAL } from "../ui/shapes.js";
 import { cellEl, removeCellsAnimated, refreshTools, render, status } from "../ui/board.js";
 import { renderPreview, showDone } from "../ui/preview.js";
-import { holdScore, showScore } from "../ui/score.js";
-import { assembleCircle, assembleDuration, burst, burstCenter } from "../ui/fx.js";
+import { holdScore, scoreHoldLeft, showScore } from "../ui/score.js";
+import { assembleCircle, burstCenter, circleTimes } from "../ui/fx.js";
 import { levelStars, loseStar, revealWinStars, showWinStars, starsHTML, totalStars } from "../ui/stars.js";
 import { checkOver, saveBest, winEndless } from "./endless.js";
 import { onExtraCircle } from "./extra.js";
+import { stopClock } from "./clock.js";
+import { chargeGain } from "./charge.js";
+
+/** EXTRA rounds multiply a circle's points by this (it grows with the combo). */
+export const extraMult = (combo) => Math.min(2 + combo, 10);
 
 /** Points for a circle of `count` pieces at the given combo (EXTRA rounds multiply). */
 function circleScore(count, combo, bonus) {
   const sizeBonus = 1 + (count - 2) * 0.25,
     comboBonus = 1 + (combo - 1) * 0.5,
-    extra = bonus ? Math.min(2 + combo, 10) : 1;
+    extra = bonus ? extraMult(combo) : 1;
   return Math.round(count * 40 * sizeBonus * comboBonus * extra);
 }
 
@@ -32,7 +37,7 @@ export function startLevel(n) {
   S.mode = "classic";
   S.bonus = false;
   S.over = false;
-  S.xOn = false;
+  stopClock();
   $("pLvls").style.display = "";
   $("restart").textContent = "Restart level";
   S.level = n;
@@ -120,15 +125,19 @@ function win() {
     prog.max = S.level + 1;
     store.set("max", prog.max);
   }
-  burstCenter(18, PAL);
+  setTimeout(() => burstCenter(22, PAL, { dist: 90, size: 6 }), 450); // once the last circle has locked
   $("ws").textContent = S.score.toLocaleString();
   showWinStars(stars, earnedHint);
   setTimeout(() => $("prev").classList.add("gone"), 550);
-  setTimeout(() => {
-    if (S.pieces.length || isEndless()) return;
-    ov("ovWin", true);
-    revealWinStars(stars);
-  }, 950);
+  const level = S.level;
+  setTimeout(
+    () => {
+      if (S.pieces.length || isEndless() || S.level !== level) return;
+      ov("ovWin", true);
+      revealWinStars(stars);
+    },
+    Math.max(950, scoreHoldLeft() + 250), // after the last points land
+  );
 }
 
 /* ---------- interaction ---------- */
@@ -166,36 +175,39 @@ export function tap(id) {
   else refreshTools();
 }
 
-/** The selection forms a full circle: score it, animate it away, maybe finish. */
+/**
+ * The selection forms a full circle: score it, play the circle sequence
+ * (ui/fx.js: pieces fly together, lock, the points fly to the score), maybe finish.
+ */
 function complete() {
   const ids = new Set(S.sel),
-    chosen = S.pieces.filter((p) => ids.has(p.id)),
-    count = chosen.length;
-  S.hist.push({ pieces: S.pieces.slice(), score: S.score, combo: S.combo });
+    chosen = S.sel.map((id) => S.pieces.find((p) => p.id === id)), // in the order they were picked
+    count = chosen.length,
+    { lock, land } = circleTimes(count);
+  S.hist.push({ pieces: S.pieces.slice(), score: S.score, combo: S.combo, charge: S.charge });
   S.combo++;
-  S.score += circleScore(count, S.combo, S.bonus);
-  holdScore(performance.now() + 0.93 * assembleDuration(count)); // count up when the circle lands
-  onExtraCircle(chosen);
+  const pts = circleScore(count, S.combo, S.bonus),
+    tag = S.bonus ? "×" + extraMult(S.combo) : S.combo > 1 ? "×" + S.combo : "";
+  S.score += pts;
+  holdScore(performance.now() + land); // count up when the number lands
+  onExtraCircle(chosen, lock);
+  chargeGain(lock); // normal Endless rounds fill the EXTRA meter
   if (count !== S.pieces.length) {
     // the last circle of a board gets the level-cleared sound instead
-    Snd.valid(count, S.combo - 1);
-    Snd.good(S.combo - 1, count, S.bonus);
+    Snd.valid(count, S.combo - 1, 0.14); // a click as each piece lands, impact at lock
+    Snd.good(S.combo - 1, count, S.bonus, lock / 1000);
   }
 
-  const br = $("board").getBoundingClientRect(),
-    [bx, by] = centerOf(br);
-  assembleCircle(chosen, br);
-  burst(
-    bx,
-    by,
-    4 + count * 3 + Math.min(S.combo * 2, 8),
-    chosen.map((p) => colorOf(p.mask)),
-  );
+  assembleCircle(chosen, $("board").getBoundingClientRect(), pts, tag);
 
-  removeCellsAnimated([...ids], () => {
-    S.pieces = S.pieces.filter((p) => !ids.has(p.id));
-    S.sel = [];
-  });
+  removeCellsAnimated(
+    [...ids],
+    () => {
+      S.pieces = S.pieces.filter((p) => !ids.has(p.id));
+      S.sel = [];
+    },
+    false,
+  ); // no fade: the pieces fly into the circle instead
 
   if (!S.pieces.length) win();
   else hud();
@@ -259,6 +271,7 @@ export function undo() {
   const h = S.hist.pop();
   S.pieces = h.pieces;
   S.score = h.score;
+  S.charge = h.charge; // an undone circle takes its EXTRA charge back
   S.combo = 0;
   S.sel = [];
   S.dead = false;
@@ -277,8 +290,17 @@ export function undo() {
  */
 export function hint() {
   if (S.busy || S.dead) return;
-  if (!isEndless() && prog.hints <= 0) return;
   Snd.init();
+  if (!isEndless() && prog.hints <= 0) {
+    // the only place that tells players how hints come back
+    replay($("hint"), "nohint");
+    Snd.tick(500, 0.1, 0.04);
+    status("No hints left: get ★★★ on any level to earn one");
+    setTimeout(() => {
+      if (!S.busy && !S.dead) status();
+    }, 2600);
+    return;
+  }
   const circle = solveAll(S.pieces)?.[0];
   if (!circle) {
     status("Dead end: the rest can't all fit — Undo");

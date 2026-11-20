@@ -8,11 +8,11 @@ import { Snd } from "../platform/audio.js";
 import { Hap } from "../platform/haptics.js";
 import { $ } from "./dom.js";
 
-// A sunken slot (always there) and the gold star set into it when earned. See .star in base.css.
+// A flat slot (always there) and the gold star placed on it when earned. See .star in base.css.
 const STAR_D = "M12 2.6l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17l-5.6 3 1.1-6.3-4.6-4.4 6.3-.9z";
 const STAR_SVG =
   `<svg viewBox="0 0 24 24" aria-hidden="true">` +
-  `<path class="slot" filter="url(#starInset)" d="${STAR_D}"/><path class="fill" d="${STAR_D}"/></svg>`;
+  `<path class="slot" d="${STAR_D}"/><path class="fill" d="${STAR_D}"/></svg>`;
 
 /** Stars the current level is still worth. */
 export const levelStars = () => 1 + (S.usedHint ? 0 : 1) + (S.usedUndo ? 0 : 1);
@@ -27,7 +27,7 @@ export function renderStarBox() {
   $("stars").innerHTML = starsHTML(levelStars());
 }
 
-/** A star was just lost (hint or undo): the last gold star lifts out of its slot. */
+/** A star was just lost (hint or undo): the last gold star fades out of its slot. */
 export function loseStar() {
   const lit = $("stars").querySelectorAll(".star.on");
   lit[lit.length - 1]?.classList.remove("on");
@@ -35,8 +35,8 @@ export function loseStar() {
 
 const STAR_FIRST = 250, // ms after the card appears
   STAR_GAP = 280,
-  STAR_POP = 450, // sland animation length (overlays.css)
-  STAR_LANDS = 0.55; // share of it until the star touches the slot
+  STAR_POP = 350, // fin animation length (overlays.css)
+  STAR_LANDS = 0.3; // share of it when the note plays (star mostly visible)
 
 /**
  * Fill the win card (still hidden): stars and what to try next.

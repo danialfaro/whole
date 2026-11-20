@@ -26,12 +26,14 @@ export const S = {
   // Endless
   undos: 3, // undo budget
   bestStart: 0, // best score when the run started
+  // round clock (endless, see modes/clock.js)
+  clockOn: false, // counting down
+  clockTotal: 0, // ms
+  clockLeft: 0, // ms
   // EXTRA bonus rounds (endless)
   bonus: false,
-  sinceBonus: 0,
-  xOn: false, // countdown running
-  xTot: 0, // ms
-  xLeft: 0, // ms
+  charge: 0, // EXTRA meter, 0..CHARGE_MAX (modes/charge.js); full = next round is EXTRA
+  chargeGrace: 0, // performance.now() until which the meter does not drain
   xCircles: [], // masks of each circle made, replayed in the finale
 };
 

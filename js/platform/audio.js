@@ -167,15 +167,22 @@ export const Snd = {
     this.tick(500, 0.12, 0.05);
   },
 
-  /** Circle of `n` pieces completed: ticks per piece + thumps, pitched up by combo. */
-  valid(n, combo) {
+  /**
+   * Circle of `n` pieces completed, played as the pieces fly together (fx.js):
+   * a click as each piece lands (every 50 ms from `d` seconds), then the impact
+   * when the circle locks, heavier with more pieces and pitched up by combo.
+   */
+  valid(n, combo, d = 0) {
     combo = combo >= 2 ? combo : 0;
-    Hap.v(hapOk(n, combo));
+    const hap = hapOk(n, combo);
+    if (d > 0) setTimeout(() => Hap.v(hap), d * 1000);
+    else Hap.v(hap);
     const cf = Math.pow(2, (Math.min(combo, 8) * 1.5) / 12);
-    for (let i = 0; i < n; i++) this.tick(2400 * cf * Math.pow(2, (-(n - 1 - i) * 1.1) / 12), 0.14, 0.03, i * 0.05);
-    const t = n * 0.05 + 0.03;
+    for (let i = 0; i < n; i++) this.tick(2400 * cf * Math.pow(2, (-(n - 1 - i) * 1.1) / 12), 0.14, 0.03, d + i * 0.05);
+    const t = d + (n - 1) * 0.05 + 0.03; // the lock
+    this.clunk(0.22 + n * 0.02, t);
     this.tick(900 * cf, 0.3, 0.06, t);
-    this.thump(120, 0.4 + n * 0.03, t);
+    this.thump(120, 0.42 + n * 0.03, t);
     for (let k = 0; k < Math.max(0, n - 2); k++) this.tick((2600 + k * 400) * cf, 0.12, 0.03, t + 0.05 + k * 0.045);
     if (n >= 3) this.thump(80, 0.3, t + 0.04);
     if (n >= 4) this.thump(60, 0.35, t + 0.09);
@@ -183,12 +190,12 @@ export const Snd = {
     for (let k = 0; k < Math.min(combo, 4); k++) this.tick(3000 + k * 500, 0.1, 0.025, t + 0.06 + k * 0.04);
   },
 
-  /** Melodic layer on top of valid(): a rising arpeggio, longer with more pieces. */
-  good(combo = 0, k = 2, extra = false) {
+  /** Melodic layer on top of valid(): a rising arpeggio, longer with more pieces. Starts `d` seconds from now. */
+  good(combo = 0, k = 2, extra = false, d = 0) {
     if (combo === 1) {
       const f = 330 * semi(2) * 2,
-        e = 0.05 + 3 * 0.06;
-      [0, 5, 7].forEach((s, i) => this.pluck(f * semi(s), 0.1, 0.05 + i * 0.06, 0.2));
+        e = d + 0.05 + 3 * 0.06;
+      [0, 5, 7].forEach((s, i) => this.pluck(f * semi(s), 0.1, d + 0.05 + i * 0.06, 0.2));
       this.pluck(f * semi(7), 0.09, e, 0.32);
       this.pluck(f * 2, 0.07, e, 0.32);
       this.tick(5200, 0.06, 0.03, e);
@@ -200,8 +207,8 @@ export const Snd = {
       Q = [0, 2, 4, 7, 9, 12, 14],
       n = Math.min(2 + k, 7);
     for (let i = 0; i < n; i++)
-      this.pluck(root * semi(12 - Q[n - 1 - i]), 0.1 + i * 0.008, 0.05 + i * 0.045, 0.18 + i * 0.02);
-    const e = 0.05 + n * 0.045;
+      this.pluck(root * semi(12 - Q[n - 1 - i]), 0.1 + i * 0.008, d + 0.05 + i * 0.045, 0.18 + i * 0.02);
+    const e = d + 0.05 + n * 0.045;
     this.pluck(root * 4, 0.12, e, 0.38);
     this.tick(5200, 0.07, 0.03, e);
     if (extra) {
@@ -210,6 +217,31 @@ export const Snd = {
         this.pluck(root * 4 * semi(Q[j]), 0.05, e + 0.03 + j * 0.05, 0.2);
       }
     }
+  },
+
+  /** Points landing on the score: a bright two-note chime, higher with `k` (0..). */
+  coin(k = 0) {
+    const f = 1319 * semi(Math.min(k, 10) * 2);
+    this.pluck(f, 0.07, 0, 0.12);
+    this.pluck(f * semi(7), 0.08, 0.05, 0.22);
+    this.tick(6000, 0.05, 0.015, 0.05);
+  },
+
+  /** A tally total popping up (round-end bonuses): a short rising blip. */
+  blip(k = 0) {
+    this.pluck(880 * semi(Math.min(k, 14)), 0.07, 0, 0.12);
+  },
+
+  /** EXTRA meter gained charge: a note that rises with the fill level `f` (0..1). */
+  charge(f = 0) {
+    this.pluck(520 * Math.pow(2, f), 0.08, 0, 0.2);
+  },
+
+  /** EXTRA meter full: rising arpeggio, a thump and sparkles. */
+  ready() {
+    [0, 4, 7, 12, 16].forEach((s, i) => this.pluck(440 * semi(s), 0.1, i * 0.06, 0.3));
+    this.thump(90, 0.3, 0.3);
+    for (let j = 0; j < 4; j++) this.tick(4200 + j * 500, 0.06, 0.02, 0.32 + j * 0.04);
   },
 
   fanfare(extra = false) {

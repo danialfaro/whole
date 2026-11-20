@@ -16,31 +16,6 @@
   </head>
 
   <body>
-    <!-- shared SVG filter: makes a star slot look pressed into the surface (used by ui/stars.js) -->
-    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
-      <filter id="starInset" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
-        <!-- the slot fill is mostly transparent: use its shape as a solid mask -->
-        <feComponentTransfer in="SourceAlpha" result="mask">
-          <feFuncA type="linear" slope="50" />
-        </feComponentTransfer>
-        <!-- shadow inside the top edge -->
-        <feOffset in="mask" dy="1.6" result="off" />
-        <feGaussianBlur in="off" stdDeviation="1" result="blur" />
-        <feComposite in="mask" in2="blur" operator="out" result="inner" />
-        <feFlood flood-color="#000" flood-opacity="0.38" />
-        <feComposite in2="inner" operator="in" result="shadow" />
-        <!-- light lip just under the bottom edge -->
-        <feOffset in="mask" dy="1" result="lipOff" />
-        <feComposite in="lipOff" in2="mask" operator="out" result="lipShape" />
-        <feFlood class="lip" flood-color="#fff" />
-        <feComposite in2="lipShape" operator="in" result="lip" />
-        <feMerge>
-          <feMergeNode in="lip" />
-          <feMergeNode in="SourceGraphic" />
-          <feMergeNode in="shadow" />
-        </feMerge>
-      </filter>
-    </svg>
     <div id="app">
       <section class="screen on" id="menu">
         <div id="hero"></div>
@@ -61,7 +36,7 @@
           <div class="stat">
             <div><small id="lvl">Level</small><b id="lv">1</b></div>
             <div><small>Score</small><b id="sc">0</b></div>
-            <div id="modeBox"><small>Mode</small><b>∞ Endless</b></div>
+            <div id="timeBox"><small>Time</small><b id="clock">0</b></div>
             <div id="starBox"><small>Stars</small><b id="stars"></b></div>
           </div>
           <button class="ib" id="sndBtn" aria-label="Sound">
@@ -77,6 +52,10 @@
           </div>
           <div id="prev"></div>
           <div id="board"></div>
+          <div id="meter">
+            <small>EXTRA</small>
+            <div class="mbar"><i id="mfill"></i></div>
+          </div>
           <div class="card" id="deadEnd" role="alertdialog" aria-labelledby="deadTitle">
             <h2 id="deadTitle">Dead end</h2>
             <p>The pieces left can't all fit together any more.</p>
@@ -105,8 +84,8 @@
     </div>
     <div class="ov" id="ovOver">
       <div class="card">
-        <h2>Run over</h2>
-        <p>No circle can be completed with what is left.</p>
+        <h2 id="overTitle">Run over</h2>
+        <p id="overWhy">No circle can be completed with what is left.</p>
         <div class="big" id="os">0</div>
         <p id="ob"></p>
         <button class="btn pri" id="again">Play again</button><button class="btn" id="overMenu">Main menu</button>

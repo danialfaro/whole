@@ -12,6 +12,7 @@ import { bindBoard, layout } from "./ui/board.js";
 import { initSettings, toggleHaptics, toggleSound, toggleTheme } from "./ui/settings.js";
 import { clearSelection, hint, openLevels, restartLevel, startLevel, tap, undo } from "./modes/play.js";
 import { bestLabel, startEndless } from "./modes/endless.js";
+import { stopClock } from "./modes/clock.js";
 
 selfTest();
 initSettings();
@@ -32,7 +33,7 @@ $("demo").innerHTML =
 /* ---------- menu ---------- */
 
 function goMenu() {
-  S.xOn = false;
+  stopClock();
   bestLabel();
   show("menu");
 }

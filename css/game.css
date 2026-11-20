@@ -52,18 +52,22 @@
   }
 }
 
-#modeBox {
+/* round clock seconds (endless only, modes/clock.js) */
+#timeBox {
   display: none;
 }
 
-#game.endless #modeBox {
+#game.endless #timeBox {
   display: block;
 }
 
-#modeBox b {
-  font-size: 15px;
-  line-height: 19px;
-  letter-spacing: 0.02em;
+#clock {
+  min-width: 2ch;
+  transition: color 0.2s;
+}
+
+#clock.low {
+  color: #d23b2a;
 }
 
 /* stars the current classic level is still worth */
@@ -103,10 +107,6 @@
   background: var(--board);
   border-radius: 22px;
   position: relative;
-}
-
-#board:empty {
-  display: none;
 }
 
 #board.dim {
@@ -309,11 +309,146 @@
 
 .pt {
   position: fixed;
-  width: 5px;
-  height: 5px;
   border-radius: 50%;
   pointer-events: none;
   z-index: 20;
+}
+
+/* a selected piece flying from its cell into the completed circle */
+.fly {
+  position: fixed;
+  pointer-events: none;
+  z-index: 24;
+  transform-origin: 50% 50%;
+}
+
+.fly svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  display: block;
+}
+
+/* points: "+N" from a circle (.pts), round-end totals (.tally), small labels (.float).
+   left/top is the centre; the translate keeps it centred under animated transforms */
+.pts,
+.tally,
+.float {
+  position: fixed;
+  translate: -50% -50%;
+  pointer-events: none;
+  z-index: 26;
+  white-space: nowrap;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  filter: drop-shadow(0 0 3px var(--board)) drop-shadow(0 0 2px var(--board));
+}
+
+.pts {
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.pts i {
+  font-style: normal;
+  font-size: 0.5em;
+  margin-left: 0.15em;
+  vertical-align: 0.7em;
+  letter-spacing: 0;
+  color: var(--mute);
+}
+
+.pts.rb,
+.tally.rb b,
+.float.rb {
+  background: var(--rainbow);
+  background-size: 200px 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: bshift 1.4s linear infinite;
+}
+
+.pts.rb i {
+  color: inherit;
+}
+
+.tally {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.tally small {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--ink) 60%, transparent);
+  min-height: 1em;
+}
+
+.tally small.in {
+  animation: tlab 0.25s ease-out;
+}
+
+@keyframes tlab {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+}
+
+.tally b {
+  font-size: clamp(44px, 13vw, 68px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.tally b.pop {
+  animation: tpop 0.18s ease-out;
+}
+
+/* rainbow numbers keep their colour shift while popping */
+.tally.rb b.pop {
+  animation:
+    tpop 0.18s ease-out,
+    bshift 1.4s linear infinite;
+}
+
+@keyframes tpop {
+  40% {
+    transform: scale(1.1);
+  }
+}
+
+.float {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* EXTRA: the board glows a little brighter on every circle */
+#game.bonus #board.xhit {
+  animation: xhit 0.45s ease-out;
+}
+
+@keyframes xhit {
+  30% {
+    box-shadow: 0 0 60px rgba(151, 117, 250, 0.55);
+  }
+}
+
+#xtxt em.pop {
+  animation: xmpop 0.3s ease-out;
+}
+
+@keyframes xmpop {
+  40% {
+    transform: scale(1.45);
+  }
 }
 
 /* ---------- selection preview (+ EXTRA countdown ring) ---------- */
@@ -368,6 +503,16 @@
     opacity: 0;
     transform: scale(0.55);
   }
+}
+
+/* round clock ring: plain ink in normal rounds (rainbow stroke is set inline in EXTRA) */
+#xring.plain {
+  stroke: color-mix(in srgb, var(--ink) 45%, transparent);
+  transition: stroke 0.2s;
+}
+
+#xring.plain.low {
+  stroke: #d23b2a;
 }
 
 #xring.low {
@@ -460,18 +605,165 @@
 }
 
 #xcd.beat {
-  animation: cdb 0.5s ease-out both;
+  animation: cdb 0.45s ease-out both;
 }
 
 @keyframes cdb {
   from {
-    opacity: 0.55;
+    opacity: 0.85;
     transform: scale(1.25);
   }
   to {
     opacity: 0;
     transform: scale(0.9);
   }
+}
+
+/* the EXTRA title slamming in before the countdown */
+#xcd.slam {
+  animation: slam 0.9s ease-out both;
+}
+
+@keyframes slam {
+  0% {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(0.94);
+  }
+  30% {
+    transform: scale(1.04);
+  }
+  42% {
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.06);
+  }
+}
+
+#xcd .xtitle {
+  display: flex;
+  gap: 0.04em;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: clamp(40px, 13vw, 76px);
+  letter-spacing: 0.12em;
+  padding-left: 0.12em;
+}
+
+#xcd .xtitle span {
+  display: inline-block;
+  background: var(--rainbow);
+  background-size: 200px 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation:
+    bwave 1.1s ease-in-out infinite,
+    bshift 2.2s linear infinite;
+}
+
+/* ---------- EXTRA meter (endless, normal rounds: ui/meter.js) ---------- */
+
+#meter {
+  display: none;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  height: 26px;
+  padding-top: 10px;
+  width: 100%;
+}
+
+#game.endless:not(.bonus) #meter {
+  display: flex;
+}
+
+#meter small {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  font-weight: 600;
+  color: var(--mute);
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.mbar {
+  flex: 1;
+  height: 4px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+  overflow: hidden;
+}
+
+#mfill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  clip-path: inset(0 100% 0 0 round 3px);
+  background: var(--rainbow);
+  background-size: 900px 100%;
+  animation: mshift 14s linear infinite;
+}
+
+@keyframes mshift {
+  to {
+    background-position: 900px 0;
+  }
+}
+
+#mfill.gain {
+  transition: clip-path 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+#meter.full #mfill {
+  background-size: 100% 100%;
+  animation: none;
+}
+
+#meter.bump .mbar {
+  animation: mbump 0.3s;
+}
+
+@keyframes mbump {
+  40% {
+    transform: scaleY(2.6);
+  }
+}
+
+#meter.full small {
+  color: var(--ink);
+}
+
+#meter.full .mbar {
+  animation: mfull 1s ease-in-out infinite;
+}
+
+@keyframes mfull {
+  50% {
+    box-shadow: 0 0 14px 2px rgba(151, 117, 250, 0.55);
+    transform: scaleY(2.2);
+  }
+}
+
+/* charge flying from the board to the meter */
+.orb {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 25;
+  background: radial-gradient(circle at 30% 30%, #fff, #ffa94d 45%, #9775fa);
+  box-shadow: 0 0 10px rgba(255, 170, 80, 0.8);
 }
 
 /* ---------- bottom: status + tools ---------- */
@@ -508,11 +800,50 @@
 }
 
 .tools .btn {
+  position: relative;
   height: 48px;
   padding: 0 8px;
   font-size: 15px;
   border-width: 1px;
   border-color: var(--line);
+}
+
+/* hints left, as a notification chip on the Hint button (gold: hints are earned with stars) */
+#hint .chip {
+  position: absolute;
+  top: -8px;
+  right: 6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--gold);
+  color: #1d1c1a;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--bg); /* flat cut-out ring that separates it from the button border */
+}
+
+#hint .chip.empty {
+  background: var(--line);
+  color: var(--mute);
+}
+
+#hint .chip.gain {
+  animation: chipgain 0.6s cubic-bezier(0.3, 0, 0.4, 1.4);
+}
+
+@keyframes chipgain {
+  40% {
+    transform: scale(1.45);
+  }
+}
+
+#hint.nohint {
+  animation: shake 0.32s;
 }
 
 @media (min-width: 700px) {
